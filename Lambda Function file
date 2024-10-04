@@ -1,0 +1,57 @@
+Lambda Function Code in Python :
+import json
+import boto3
+from PIL import Image
+from io import BytesIO
+
+# Initialize clients
+s3 = boto3.client('s3')
+rekognition = boto3.client('rekognition')
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table('ImageAnalysis')
+def lambda_handler(event, context):
+
+# Get the bucket and object key from the event
+bucket = event['Records'][0]['s3']['bucket']['name']
+key = event['Records'][0]['s3']['object']['key']
+
+# Step 1: Download the image from S3
+response = s3.get_object(Bucket=bucket, Key=key)
+img = Image.open(response['Body'])
+
+# Step 2: Process the image (resize in this example)
+img = img.resize((800, 600))
+
+# Step 3: Save the processed image back to S3
+buffer = BytesIO()
+img.save(buffer, 'JPEG')
+buffer.seek(0)
+processed_key = 'processed/' + key
+s3.put_object(Bucket=bucket, Key=processed_key, Body=buffer)
+
+# Step 4: Call Rekognition to detect labels in the processed image
+rekog_response = rekognition.detect_labels(
+Image={
+'S3Object': {
+'Bucket': bucket,
+'Name': processed_key
+}
+},
+MaxLabels=10
+)
+# Extract labels and their confidence
+label_info = [{'Label': label['Name'], 'Confidence': label['Confidence']} for label in rekog_response['Labels']]
+
+# Step 5: Store the results in DynamoDB
+table.put_item(
+Item={
+'imageId': key, # original key
+'processedImageId': processed_key, # processed image key
+'labels': label_info,
+'uploadTime': event['Records'][0]['eventTime']
+}
+)
+return {
+'statusCode': 200,
+'body': json.dumps('Image processed and analyzed successfully!')
+}
