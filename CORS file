@@ -1,0 +1,17 @@
+CORS Code in JSON :
+
+[
+{
+"AllowedHeaders": [
+"*"
+],
+"AllowedMethods": [
+"PUT"
+],
+"AllowedOrigins": [
+"https://main.d3igshvhljv37w.amplifyapp.com"
+],
+"ExposeHeaders": [],
+"MaxAgeSeconds": 3000
+}
+]
